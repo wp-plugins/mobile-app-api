@@ -1,7 +1,7 @@
 === Plugin Name ===
 Contributors: mobileappbuilder
 Tags: mobile, plugin, iphone, android, integration
-Stable tag: trunk
+Stable tag: 1.0.0
 
 Mobile App API Wordpress plugin lets you turn your website into a full-featured mobile application in minutes using Mobile App Builder.
 == Description ==

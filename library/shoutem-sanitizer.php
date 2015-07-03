@@ -45,10 +45,10 @@ function sanitize_html($html, &$attachments = null) {
 	$forbiden_elements = "/<(style|script|iframe|object|embed|dl).*?>.*?<\/(\\1)>/si";
 	$filtered_html = preg_replace($forbiden_elements, "",$filtered_html);
 
-
 	//Limited support for tables: each table row starts from a new line
 	$filtered_html = preg_replace("(</tr.*?>)", "<br/>",$filtered_html);
 
+	$all_tags = "/<(\/)?\s*([\w-_]+)(.*?)(\/)?>/ie";
 	//first try wp_kses for removal of html elements
 	if (function_exists('wp_kses')) {
 
@@ -61,7 +61,7 @@ function sanitize_html($html, &$attachments = null) {
 				'h3' => array(),
 				'h4' => array(),
 				'h5' => array(),
-				'p' => array(),
+				'p' => array('class'=>true),
 				'br' => array(),
 				'b' => array(),
 				'strong' => array(),
@@ -73,9 +73,9 @@ function sanitize_html($html, &$attachments = null) {
 			);
 		$filtered_html = wp_kses($filtered_html, $allowed_html);
 	} else {
-		$all_tags = "/<(\/)?\s*([\w-_]+)(.*?)(\/)?>/ie";
 		$filtered_html = preg_replace($all_tags, "filter_tag('\\1','\\2','\\3','\\4')",$filtered_html);
 	}
+	$filtered_html = preg_replace($all_tags, "filter_css_class('\\1','\\2','\\3','\\4')",$filtered_html);
 
 	/*
 	 * This is needed because wp_kses always removes 'se-attachment' or 'se:attachment' tag regardles of $allowed_html parameter.
@@ -83,6 +83,7 @@ function sanitize_html($html, &$attachments = null) {
 	 * Here, seattachment label is replaced with the proper label
 	 */
 	$filtered_html = preg_replace("/xmlns=\"v1\"(\s)*\/>/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"></attachment>",$filtered_html);
+
 	return $filtered_html;
 }
 
@@ -153,14 +154,19 @@ function strip_images(&$html) {
 	if(preg_match_all('/<img.*?>/i',$html,$matches) > 0) {
 		foreach($matches[0] as $index => $imageTag) {
 			$id = 'img-'.$index;
+			
 			$image = get_tag_attr($imageTag, array(
 				'id' => $id,
 				'attachment-type' => 'image',
 				'src' => '',
 				'width' => '',
 				'height' => '',
-				'title' => ''
+				'title' => '',
+				'alt' => ''
 			));
+			if (!$image['title']) $image['title'] = $image['alt'];
+			unset($image['alt']);
+
 			$images []= $image;
 			$html = str_replace($imageTag,"<attachment id=\"$id\" type=\"image\" xmlns=\"v1\" />",$html);
 		}
@@ -369,10 +375,37 @@ function filter_tag($opening, $name, $attr, $closing) {
 		$filtered_attr = get_sanitized_attr('src',$attr);
 	} else if (strcmp($name,'a') == 0) {
 		$filtered_attr = get_sanitized_attr('href',$attr);
+	} else if (strcmp($name,'p') == 0) {
+		$filtered_attr = get_sanitized_attr('class',$attr);
 	}
 
 	$tag = '<'.$opening.$name.$filtered_attr.$closing.'>';
 	$tag = str_replace("\\\"", "\"", $tag);
+	return $tag;
+}
+
+/**
+ * private function used by sanitize_html to remove or modify class attribute of each html tag.
+ * @return filtered tag
+ */
+function filter_css_class($opening, $name, $attr, $closing) {
+	$newClasses = array();
+	$replaceString = '';
+	
+	if (strcmp($name,'p') == 0) {
+		$captionRegex = "/class=(([\"\']).*?)wp-caption-text(.*?\2)/i";
+		if (preg_match($captionRegex, $attr)) {
+			$newClasses[] = 'image-caption';
+		}
+	}
+
+	$classRegex = "/(\s*class=([\"\'])).*?\2/i";
+	if (count($newClasses)) {
+		$replaceString = "$1".implode(" ", $newClasses)."$2";
+	}
+	$modified_attr = preg_replace($classRegex, $replaceString, $attr);
+	
+	$tag = '<'.$opening.$name.$modified_attr.$closing.'>';
 	return $tag;
 }
 

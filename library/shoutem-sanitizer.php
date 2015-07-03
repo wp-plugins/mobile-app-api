@@ -164,7 +164,7 @@ function strip_images(&$html) {
 				'title' => '',
 				'alt' => ''
 			));
-			if (!$image['title']) $image['title'] = $image['alt'];
+			$image['caption'] = $image['alt'];
 			unset($image['alt']);
 
 			$images []= $image;

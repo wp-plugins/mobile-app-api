@@ -152,6 +152,8 @@ function strip_attachments(&$html) {
 
 function strip_images(&$html) {
 	$images = array();
+
+	$captionInfo = get_caption_info($html);
 	if(preg_match_all('/<img.*?>/i',$html,$matches) > 0) {
 		foreach($matches[0] as $index => $imageTag) {
 			$id = 'img-'.$index;
@@ -162,11 +164,11 @@ function strip_images(&$html) {
 				'src' => '',
 				'width' => '',
 				'height' => '',
-				'title' => '',
-				'alt' => ''
+				'title' => ''
 			));
-			$image['caption'] = $image['alt'];
-			unset($image['alt']);
+			if ($captionInfo['image_src'] &&  $captionInfo['image_src'] == $image['src']) {
+				$image['caption'] = $captionInfo['text'];
+			}
 
 			$images []= $image;
 			$html = str_replace($imageTag,"<attachment id=\"$id\" type=\"image\" xmlns=\"v1\" />",$html);
@@ -409,6 +411,7 @@ function filter_css_class($opening, $name, $attr, $closing) {
 	$modified_attr = preg_replace($classRegex, $replaceString, $attr);
 	
 	$tag = '<'.$opening.$name.$modified_attr.$closing.'>';
+	$tag = str_replace("\\\"", "\"", $tag);
 	return $tag;
 }
 
@@ -440,6 +443,32 @@ function get_sanitized_attr($name, $string) {
 		return $tagAttr['html_attr'];
 	}
 	return '';
+}
+
+function get_caption_info($html) {
+	$dom = new DOMDocument();
+    // posts don't have a single root, so wrap them
+    // supress warnings caused by HTML5 tags
+    @$dom->loadHTML('<html>'.$html.'</html>');
+    $xpath = new DOMXPath($dom);
+    $captionNode = $xpath->query("//*[contains(concat(' ', @class, ' '),' wp-caption ')]")->item(0);
+
+    $info = array(
+    	'image_src' => NULL,
+    	'text' => NULL,
+    );
+    if ($captionNode) {
+    	$imageSrcNode = $xpath->query("//img/@src", $captionNode)->item(0);
+    	if ($imageSrcNode) {
+    		$info['image_src'] = $imageSrcNode->value;
+    	}
+    	$textNode = $xpath->query("//*[contains(concat(' ', @class, ' '),' wp-caption-text ')]/text()", $captionNode)->item(0);
+    	if ($textNode) {
+    		$info['text'] = $textNode->nodeValue;
+    	}
+    }
+
+    return $info;
 }
 
 ?>

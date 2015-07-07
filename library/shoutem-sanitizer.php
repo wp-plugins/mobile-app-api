@@ -62,6 +62,7 @@ function sanitize_html($html, &$attachments = null) {
 				'h4' => array(),
 				'h5' => array(),
 				'p' => array('class'=>true),
+				'figcaption' => array('class'=>true),
 				'br' => array(),
 				'b' => array(),
 				'strong' => array(),
@@ -377,6 +378,8 @@ function filter_tag($opening, $name, $attr, $closing) {
 		$filtered_attr = get_sanitized_attr('href',$attr);
 	} else if (strcmp($name,'p') == 0) {
 		$filtered_attr = get_sanitized_attr('class',$attr);
+	} else if (strcmp($name,'figcaption') == 0) {
+		$filtered_attr = get_sanitized_attr('class',$attr);
 	}
 
 	$tag = '<'.$opening.$name.$filtered_attr.$closing.'>';
@@ -392,7 +395,7 @@ function filter_css_class($opening, $name, $attr, $closing) {
 	$newClasses = array();
 	$replaceString = '';
 	
-	if (strcmp($name,'p') == 0) {
+	if (strcmp($name,'p') == 0 || strcmp($name,'figcaption') == 0) {
 		$captionRegex = "/class=(([\"\']).*?)wp-caption-text(.*?\2)/i";
 		if (preg_match($captionRegex, $attr)) {
 			$newClasses[] = 'image-caption';

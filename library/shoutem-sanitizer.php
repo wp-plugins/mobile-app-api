@@ -45,13 +45,13 @@ function sanitize_html($html, &$attachments = null) {
 	$forbiden_elements = "/<(style|script|iframe|object|embed|dl).*?>.*?<\/(\\1)>/si";
 	$filtered_html = preg_replace($forbiden_elements, "",$filtered_html);
 
-	//Limited support for tables: each table row starts from a new line
-	$filtered_html = preg_replace("(</tr.*?>)", "<br/>",$filtered_html);
-
+	$disclaimer_div = "/<(div)(.+?id=(\\\\*([\\\"\\\']))disclaimer\\3.*?)>(.*?)<\/\\1>/si";
+	$filtered_html = preg_replace($disclaimer_div, "<p$2>$5</p>", $filtered_html);
+	
 	$all_tags = "/<(\/)?\s*([\w-_]+)(.*?)(\/)?>/ie";
+	$filtered_html = preg_replace($all_tags, "rename_tag('\\1','\\2','\\3','\\4')",$filtered_html);
 	//first try wp_kses for removal of html elements
 	if (function_exists('wp_kses')) {
-
 		$allowed_html = array(
 				'attachment' => array('id'=>true,'type'=>true,'xmlns'=>true),
 				'a' => array('href'=>true),
@@ -61,8 +61,7 @@ function sanitize_html($html, &$attachments = null) {
 				'h3' => array(),
 				'h4' => array(),
 				'h5' => array(),
-				'p' => array('class'=>true),
-				'figcaption' => array('class'=>true),
+				'p' => array('id'=>true, 'class'=>true),
 				'br' => array(),
 				'b' => array(),
 				'strong' => array(),
@@ -76,7 +75,7 @@ function sanitize_html($html, &$attachments = null) {
 	} else {
 		$filtered_html = preg_replace($all_tags, "filter_tag('\\1','\\2','\\3','\\4')",$filtered_html);
 	}
-	$filtered_html = preg_replace($all_tags, "filter_css_class('\\1','\\2','\\3','\\4')",$filtered_html);
+	$filtered_html = preg_replace($all_tags, "filter_attr('\\1','\\2','\\3','\\4')",$filtered_html);
 
 	/*
 	 * This is needed because wp_kses always removes 'se-attachment' or 'se:attachment' tag regardles of $allowed_html parameter.
@@ -380,8 +379,6 @@ function filter_tag($opening, $name, $attr, $closing) {
 		$filtered_attr = get_sanitized_attr('href',$attr);
 	} else if (strcmp($name,'p') == 0) {
 		$filtered_attr = get_sanitized_attr('class',$attr);
-	} else if (strcmp($name,'figcaption') == 0) {
-		$filtered_attr = get_sanitized_attr('class',$attr);
 	}
 
 	$tag = '<'.$opening.$name.$filtered_attr.$closing.'>';
@@ -393,24 +390,62 @@ function filter_tag($opening, $name, $attr, $closing) {
  * private function used by sanitize_html to remove or modify class attribute of each html tag.
  * @return filtered tag
  */
-function filter_css_class($opening, $name, $attr, $closing) {
-	$newClasses = array();
-	$replaceString = '';
+function filter_attr($opening, $name, $attr, $closing) {
+	$new_classes = array();
+	$clear_id = false;
 	
-	if (strcmp($name,'p') == 0 || strcmp($name,'figcaption') == 0) {
-		$captionRegex = "/class=(([\"\']).*?)wp-caption-text(.*?\2)/i";
-		if (preg_match($captionRegex, $attr)) {
-			$newClasses[] = 'image-caption';
-		}
+	$caption_class_regex = "/class=(\\\\*([\\\"\\']).*?)wp-caption-text.*?\\1/i";
+	if (preg_match($caption_class_regex, $attr)) {
+		$new_classes[] = 'image-caption';
 	}
 
-	$classRegex = "/(\s*class=([\"\'])).*?\2/i";
-	if (count($newClasses)) {
-		$replaceString = "$1".implode(" ", $newClasses)."$2";
+	$disclaimer_id_regex = "/id=(\\\\*([\\\"\\']))disclaimer\\1/i";
+	if (preg_match($disclaimer_id_regex, $attr)) {
+		$new_classes[] = 'disclaimer';
+		$clear_id = true;
 	}
-	$modified_attr = preg_replace($classRegex, $replaceString, $attr);
+	else if (strcmp($name,'p') == 0) {
+		$clear_id = true;
+	}
+
+	$new_attr = $attr;
+	if (!$new_attr) $new_attr = '';
+	$class_regex = "/(\s*class=(\\\\*[\\\"\\'])).*?\\2/i";
+	if (preg_match($class_regex, $attr)) {
+		$replace_string = '';
+		if (count($new_classes)) {
+			$replace_string = "$1".implode(" ", $new_classes)."$2";
+		}
+		$new_attr = preg_replace($class_regex, $replace_string, $new_attr);
+	} else if (count($new_classes)) {
+		$new_attr = $new_attr.' class="'.implode(" ", $new_classes).'"';
+	}
+	if ($clear_id) {
+		$id_regex = "/(\s*id=(\\\\*[\\\"\\'])).*?\\2/i";
+		$new_attr = preg_replace($id_regex, '', $new_attr);
+	}
 	
-	$tag = '<'.$opening.$name.$modified_attr.$closing.'>';
+	$tag = '<'.$opening.$name.$new_attr.$closing.'>';
+	$tag = str_replace("\\\"", "\"", $tag);
+	return $tag;
+}
+
+/**
+ * private function used by sanitize_html to rename tags
+ * @return filtered tag
+ */
+function rename_tag($opening, $name, $attr, $closing) {
+	if (strcmp($name,'figcaption') == 0) {
+		$name = 'p';
+	} else if (strcmp($name,'tr') == 0 && strcmp($opening,'/') == 0) {
+		//Limited support for tables: each table row starts from a new line
+		$opening = '';
+		$name = 'br';
+		$attr = '';
+		$closing = '/';
+	}
+
+	$tag = '<'.$opening.$name.$attr.$closing.'>';
 	$tag = str_replace("\\\"", "\"", $tag);
 	return $tag;
 }

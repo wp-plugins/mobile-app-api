@@ -18,7 +18,63 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+
+function shoutem_img_caption_shortcode_filter($empty, $attr, $content) {
+	if (!isset($_REQUEST['shoutemapi'])) {
+		return '';
+	}
+
+	if (empty($attr['caption'])) {
+		return '<figure>'.$content.'</figure>';
+	}
+
+	$content = '<figure>'.$content.'<figcaption class="image-caption">'.$attr['caption'].'</figcaption>'.'</figure>';
+
+	$dom = new DOMDocument();
+	@$dom->loadHTML(do_shortcode($content));
+	foreach ($dom->getElementsByTagName('img') as $img) {
+		$img->setAttribute('caption', $attr['caption']);
+		if (!empty($attr['width'])) {
+			$img->setAttribute('width', $attr['width']);
+		}
+	}
+
+	return substr($dom->saveXML($dom->getElementsByTagName('body')->item(0)), 6, -7);
+}
+
+function shoutem_smg_gallery_post_after_content_filter($content) {
+	if (!isset($_REQUEST['shoutemapi'])) {
+		return $content;
+	}
+
+	$dom = new DOMDocument();
+	// supress warnings caused by HTML5 tags
+	@$dom->loadHTML($content);
+
+	$gallery_node = $dom->getElementById('SMG_PhotoGallery');
+	if (!$gallery_node) {
+		return $content;
+	}
+
+	$shortcode_fragment = $dom->createDocumentFragment();
+	// $shortcode_fragment->loadHTML('[shoutemsmgallery]'.$gallery_node->saveXML().'[/shoutemsmgallery]');
+	$shortcode_fragment->appendChild(new DOMText('[shoutemsmgallery]'));
+	$shortcode_fragment->appendChild($gallery_node->cloneNode(true));
+	$shortcode_fragment->appendChild(new DOMText('[/shoutemsmgallery]'));
+	$gallery_node->parentNode->replaceChild($shortcode_fragment, $gallery_node);
+
+	return substr($dom->saveXML($dom->getElementsByTagName('body')->item(0)), 6, -7);
+}
+
 class ShoutemPostsDao extends ShoutemDao {
+
+	public function __construct() {
+		remove_filter('shoutem_get_post_after_content', 'shoutem_smg_gallery_post_after_content_filter');
+		add_filter('shoutem_get_post_after_content', 'shoutem_smg_gallery_post_after_content_filter');
+
+		remove_filter('img_caption_shortcode', 'shoutem_img_caption_shortcode_filter', 10, 3);
+		add_filter('img_caption_shortcode', 'shoutem_img_caption_shortcode_filter', 10, 3);
+	}
 
 	public function get($params) {
 		global $post;
@@ -177,6 +233,7 @@ class ShoutemPostsDao extends ShoutemDao {
 			);
 		}
 		$remaped_post['categories'] = $categories;
+
 		//*** ACTION  shoutem_get_post_start ***//
 		//Integration with external plugins will usually hook to this action to
 		//substitute shortcodes or generate appropriate attachments from the content.
@@ -187,10 +244,11 @@ class ShoutemPostsDao extends ShoutemDao {
 		));
 
 		$body = apply_filters('the_content', do_shortcode($remaped_post['body']));
-
 		if ($include_raw_post) {
 			$remaped_post['raw_post'] = $body;
 		}
+
+		$body = do_shortcode(apply_filters('shoutem_get_post_after_content', $body));
 
 		$striped_attachments = array ();
 		$remaped_post['body'] = sanitize_html($body, $striped_attachments);

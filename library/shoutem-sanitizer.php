@@ -76,14 +76,8 @@ function sanitize_html($html, &$attachments = null) {
 		$filtered_html = preg_replace($all_tags, "filter_tag('\\1','\\2','\\3','\\4')",$filtered_html);
 	}
 	$filtered_html = preg_replace($all_tags, "filter_attr('\\1','\\2','\\3','\\4')",$filtered_html);
-
-	/*
-	 * This is needed because wp_kses always removes 'se-attachment' or 'se:attachment' tag regardles of $allowed_html parameter.
-	 * To circumvent this, strip_attacments inserts <seattachment id=''/> instead of<se-attachment .../> into html.
-	 * Here, seattachment label is replaced with the proper label
-	 */
-	$filtered_html = preg_replace("/xmlns=\"v1\"(\s)*\/>/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"></attachment>",$filtered_html);
-
+	$filtered_html = preg_replace("/xmlns=\"v1\"([^>]*?)\s*\\/>/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"$1></attachment>",$filtered_html);
+	$filtered_html = preg_replace("/xmlns=\"v1\"/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\">",$filtered_html);
 	return $filtered_html;
 }
 
@@ -152,7 +146,6 @@ function strip_attachments(&$html) {
 function strip_images(&$html) {
 	$images = array();
 
-	$captionInfo = get_caption_info($html);
 	if(preg_match_all('/<img.*?>/i',$html,$matches) > 0) {
 		foreach($matches[0] as $index => $imageTag) {
 			$id = 'img-'.$index;
@@ -163,11 +156,9 @@ function strip_images(&$html) {
 				'src' => '',
 				'width' => '',
 				'height' => '',
-				'title' => ''
+				'title' => '',
+				'caption' => ''
 			));
-			if ($captionInfo['image_src'] &&  $captionInfo['image_src'] == $image['src']) {
-				$image['caption'] = $captionInfo['text'];
-			}
 
 			$images []= $image;
 			$html = str_replace($imageTag,"<attachment id=\"$id\" type=\"image\" xmlns=\"v1\" />",$html);
@@ -394,7 +385,7 @@ function filter_attr($opening, $name, $attr, $closing) {
 	$new_classes = array();
 	$clear_id = false;
 	
-	$caption_class_regex = "/class=(\\\\*([\\\"\\']).*?)wp-caption-text.*?\\1/i";
+	$caption_class_regex = "/class=(\\\\*([\\\"\\']).*?)(wp-caption-text|image-caption).*?\\1/i";
 	if (preg_match($caption_class_regex, $attr)) {
 		$new_classes[] = 'image-caption';
 	}
@@ -478,32 +469,6 @@ function get_sanitized_attr($name, $string) {
 		return $tagAttr['html_attr'];
 	}
 	return '';
-}
-
-function get_caption_info($html) {
-	$dom = new DOMDocument();
-    // posts don't have a single root, so wrap them
-    // supress warnings caused by HTML5 tags
-    @$dom->loadHTML('<html>'.$html.'</html>');
-    $xpath = new DOMXPath($dom);
-    $captionNode = $xpath->query("//*[contains(concat(' ', @class, ' '),' wp-caption ')]")->item(0);
-
-    $info = array(
-    	'image_src' => NULL,
-    	'text' => NULL,
-    );
-    if ($captionNode) {
-    	$imageSrcNode = $xpath->query("//img/@src", $captionNode)->item(0);
-    	if ($imageSrcNode) {
-    		$info['image_src'] = $imageSrcNode->value;
-    	}
-    	$textNode = $xpath->query("//*[contains(concat(' ', @class, ' '),' wp-caption-text ')]/text()", $captionNode)->item(0);
-    	if ($textNode) {
-    		$info['text'] = $textNode->nodeValue;
-    	}
-    }
-
-    return $info;
 }
 
 ?>

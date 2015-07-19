@@ -19,60 +19,13 @@
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-function shoutem_img_caption_shortcode_filter($empty, $attr, $content) {
-	if (!isset($_REQUEST['shoutemapi'])) {
-		return '';
-	}
-
-	if (empty($attr['caption'])) {
-		return '<figure>'.$content.'</figure>';
-	}
-
-	$content = '<figure>'.$content.'<figcaption class="image-caption">'.$attr['caption'].'</figcaption>'.'</figure>';
-
-	$dom = new DOMDocument();
-	@$dom->loadHTML(do_shortcode($content));
-	foreach ($dom->getElementsByTagName('img') as $img) {
-		$img->setAttribute('caption', $attr['caption']);
-		if (!empty($attr['width'])) {
-			$img->setAttribute('width', $attr['width']);
-		}
-	}
-
-	return substr($dom->saveXML($dom->getElementsByTagName('body')->item(0)), 6, -7);
-}
-
-function shoutem_smg_gallery_post_after_content_filter($content) {
-	if (!isset($_REQUEST['shoutemapi'])) {
-		return $content;
-	}
-
-	$dom = new DOMDocument();
-	// supress warnings caused by HTML5 tags
-	@$dom->loadHTML($content);
-
-	$gallery_node = $dom->getElementById('SMG_PhotoGallery');
-	if (!$gallery_node) {
-		return $content;
-	}
-
-	$shortcode_fragment = $dom->createDocumentFragment();
-	// $shortcode_fragment->loadHTML('[shoutemsmgallery]'.$gallery_node->saveXML().'[/shoutemsmgallery]');
-	$shortcode_fragment->appendChild(new DOMText('[shoutemsmgallery]'));
-	$shortcode_fragment->appendChild($gallery_node->cloneNode(true));
-	$shortcode_fragment->appendChild(new DOMText('[/shoutemsmgallery]'));
-	$gallery_node->parentNode->replaceChild($shortcode_fragment, $gallery_node);
-
-	return substr($dom->saveXML($dom->getElementsByTagName('body')->item(0)), 6, -7);
-}
-
 class ShoutemPostsDao extends ShoutemDao {
 
 	public function __construct() {
-		remove_filter('shoutem_get_post_after_content', 'shoutem_smg_gallery_post_after_content_filter');
-		add_filter('shoutem_get_post_after_content', 'shoutem_smg_gallery_post_after_content_filter');
+		remove_filter('shoutem_shortcode_wrapper', 'shoutem_shortcode_wrapper_filter', 10);
+		add_filter('shoutem_shortcode_wrapper', 'shoutem_shortcode_wrapper_filter', 10, 3);
 
-		remove_filter('img_caption_shortcode', 'shoutem_img_caption_shortcode_filter', 10, 3);
+		remove_filter('img_caption_shortcode', 'shoutem_img_caption_shortcode_filter', 10);
 		add_filter('img_caption_shortcode', 'shoutem_img_caption_shortcode_filter', 10, 3);
 	}
 
@@ -248,7 +201,9 @@ class ShoutemPostsDao extends ShoutemDao {
 			$remaped_post['raw_post'] = $body;
 		}
 
-		$body = do_shortcode(apply_filters('shoutem_get_post_after_content', $body));
+		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#SMG_PhotoGallery', 'shoutemsmgallery');
+		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.embed-twitter', 'shoutemtwitterembed');
+		$body = do_shortcode($body);
 
 		$striped_attachments = array ();
 		$remaped_post['body'] = sanitize_html($body, $striped_attachments);
@@ -322,4 +277,73 @@ class ShoutemPostsDao extends ShoutemDao {
 	}
 
 }
+
+function shoutem_img_caption_shortcode_filter($empty, $attr, $content) {
+	if (!isset($_REQUEST['shoutemapi'])) {
+		return '';
+	}
+
+	if (empty($attr['caption'])) {
+		return '<figure>'.$content.'</figure>';
+	}
+
+	$content = '<figure>'.$content.'<figcaption class="image-caption">'.$attr['caption'].'</figcaption>'.'</figure>';
+
+	$dom = new DOMDocument();
+	@$dom->loadHTML(do_shortcode($content));
+	foreach ($dom->getElementsByTagName('img') as $img) {
+		$img->setAttribute('caption', $attr['caption']);
+		if (!empty($attr['width'])) {
+			$img->setAttribute('width', $attr['width']);
+		}
+	}
+
+	return substr($dom->saveXML($dom->getElementsByTagName('body')->item(0)), 6, -7);
+}
+
+function shoutem_shortcode_wrapper_filter($content, $css_id_or_class, $shortcode) {
+	if (!isset($_REQUEST['shoutemapi'])) {
+		return $content;
+	}
+
+	$id = '';
+	$class = '';
+	if (strpos($css_id_or_class, "#") === 0) {
+		$id = substr($css_id_or_class, 1);
+	}
+
+	if (strpos($css_id_or_class, ".") === 0) {
+		$class = substr($css_id_or_class, 1);
+	}
+
+	if (!$id && !$class) {
+		return $content;
+	}
+
+	$dom = new DOMDocument();
+	// supress warnings caused by HTML5 tags
+	@$dom->loadHTML('<?xml encoding="UTF-8">'.$content);
+
+	$nodes_to_wrap = array();
+	if ($id) {
+		$node = $dom->getElementById($id);
+		if ($node) {
+			$nodes_to_wrap[] = $node;
+		}
+	} else if ($class) {
+		$xpath = new DOMXPath($dom);
+		$nodes_to_wrap = $xpath->query("//*[contains(concat(' ', @class, ' '),' ".$class." ')]");
+	}
+
+	foreach ($nodes_to_wrap as $node_to_wrap) {
+		$shortcode_fragment = $dom->createDocumentFragment();
+		$shortcode_fragment->appendChild(new DOMText('['.$shortcode.']'));
+		$shortcode_fragment->appendChild($node_to_wrap->cloneNode(true));
+		$shortcode_fragment->appendChild(new DOMText('[/'.$shortcode.']'));
+		$node_to_wrap->parentNode->replaceChild($shortcode_fragment, $node_to_wrap);
+	}
+	
+	return substr($dom->saveHTML($dom->getElementsByTagName('body')->item(0)), 6, -7);
+}
+
 ?>

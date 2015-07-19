@@ -49,7 +49,7 @@ function sanitize_html($html, &$attachments = null) {
 	$filtered_html = preg_replace($disclaimer_div, "<p$2>$5</p>", $filtered_html);
 	
 	$all_tags = "/<(\/)?\s*([\w-_]+)(.*?)(\/)?>/ie";
-	$filtered_html = preg_replace($all_tags, "rename_tag('\\1','\\2','\\3','\\4')",$filtered_html);
+	$filtered_html = preg_replace($all_tags, "rename_tag_pre('\\1','\\2','\\3','\\4')",$filtered_html);
 	//first try wp_kses for removal of html elements
 	if (function_exists('wp_kses')) {
 		$allowed_html = array(
@@ -69,13 +69,16 @@ function sanitize_html($html, &$attachments = null) {
 				'i' => array(),
 				'ul' => array(),
 				'li' => array(),
-				'ol' => array()
+				'ol' => array(),
+				'twitterdiv' => array('class'=>true)
 			);
 		$filtered_html = wp_kses($filtered_html, $allowed_html);
 	} else {
 		$filtered_html = preg_replace($all_tags, "filter_tag('\\1','\\2','\\3','\\4')",$filtered_html);
 	}
 	$filtered_html = preg_replace($all_tags, "filter_attr('\\1','\\2','\\3','\\4')",$filtered_html);
+	$filtered_html = preg_replace($all_tags, "rename_tag_post('\\1','\\2','\\3','\\4')",$filtered_html);
+
 	$filtered_html = preg_replace("/xmlns=\"v1\"([^>]*?)\s*\\/>/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"$1></attachment>",$filtered_html);
 	$filtered_html = preg_replace("/xmlns=\"v1\"/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\">",$filtered_html);
 	return $filtered_html;
@@ -370,6 +373,8 @@ function filter_tag($opening, $name, $attr, $closing) {
 		$filtered_attr = get_sanitized_attr('href',$attr);
 	} else if (strcmp($name,'p') == 0) {
 		$filtered_attr = get_sanitized_attr('class',$attr);
+	} else if (strcmp($name,'twitterdiv') == 0) {
+		$filtered_attr = get_sanitized_attr('class',$attr);
 	}
 
 	$tag = '<'.$opening.$name.$filtered_attr.$closing.'>';
@@ -384,6 +389,7 @@ function filter_tag($opening, $name, $attr, $closing) {
 function filter_attr($opening, $name, $attr, $closing) {
 	$new_classes = array();
 	$clear_id = false;
+	$keep_class = false;
 	
 	$caption_class_regex = "/class=(\\\\*([\\\"\\']).*?)(wp-caption-text|image-caption).*?\\1/i";
 	if (preg_match($caption_class_regex, $attr)) {
@@ -399,21 +405,27 @@ function filter_attr($opening, $name, $attr, $closing) {
 		$clear_id = true;
 	}
 
+	if (strcmp($name,'twitterdiv') == 0) {
+		$keep_class = true;
+	}
+
 	$new_attr = $attr;
 	if (!$new_attr) $new_attr = '';
-	$class_regex = "/(\s*class=(\\\\*[\\\"\\'])).*?\\2/i";
-	if (preg_match($class_regex, $attr)) {
-		$replace_string = '';
-		if (count($new_classes)) {
-			$replace_string = "$1".implode(" ", $new_classes)."$2";
+	if (!$keep_class) {
+		$class_regex = "/(\s*class=(\\\\*[\\\"\\'])).*?\\2/i";
+		if (preg_match($class_regex, $attr)) {
+			$replace_string = '';
+			if (count($new_classes)) {
+				$replace_string = "$1".implode(" ", $new_classes)."$2";
+			}
+			$new_attr = preg_replace($class_regex, $replace_string, $new_attr);
+		} else if (count($new_classes)) {
+			$new_attr = $new_attr.' class="'.implode(" ", $new_classes).'"';
 		}
-		$new_attr = preg_replace($class_regex, $replace_string, $new_attr);
-	} else if (count($new_classes)) {
-		$new_attr = $new_attr.' class="'.implode(" ", $new_classes).'"';
-	}
-	if ($clear_id) {
-		$id_regex = "/(\s*id=(\\\\*[\\\"\\'])).*?\\2/i";
-		$new_attr = preg_replace($id_regex, '', $new_attr);
+		if ($clear_id) {
+			$id_regex = "/(\s*id=(\\\\*[\\\"\\'])).*?\\2/i";
+			$new_attr = preg_replace($id_regex, '', $new_attr);
+		}
 	}
 	
 	$tag = '<'.$opening.$name.$new_attr.$closing.'>';
@@ -425,7 +437,7 @@ function filter_attr($opening, $name, $attr, $closing) {
  * private function used by sanitize_html to rename tags
  * @return filtered tag
  */
-function rename_tag($opening, $name, $attr, $closing) {
+function rename_tag_pre($opening, $name, $attr, $closing) {
 	if (strcmp($name,'figcaption') == 0) {
 		$name = 'p';
 	} else if (strcmp($name,'tr') == 0 && strcmp($opening,'/') == 0) {
@@ -440,6 +452,21 @@ function rename_tag($opening, $name, $attr, $closing) {
 	$tag = str_replace("\\\"", "\"", $tag);
 	return $tag;
 }
+
+/**
+ * private function used by sanitize_html to rename tags
+ * @return filtered tag
+ */
+function rename_tag_post($opening, $name, $attr, $closing) {
+	if (strcmp($name,'twitterdiv') == 0) {
+		$name = 'div';
+	}
+
+	$tag = '<'.$opening.$name.$attr.$closing.'>';
+	$tag = str_replace("\\\"", "\"", $tag);
+	return $tag;
+}
+
 
 function is_attr_forbidden($attr) {
 	if (preg_match("/\s*javascript.*/i",$attr['value']) > 0) {

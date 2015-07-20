@@ -194,6 +194,13 @@ function strip_videos(&$html) {
 				$id = $tag_attr['id'];
 				$html = str_replace($matches[0][$index],"<attachment id=\"$id\" type=\"video\" xmlns=\"v1\" />",$html);
 			}
+
+			if (strpos($tag_attr['src'],'brightcove') !== false) {
+				$tag_attr['provider'] = 'brightcove';
+				$videos []= $tag_attr;
+				$id = $tag_attr['id'];
+				$html = str_replace($matches[0][$index],"<attachment id=\"$id\" type=\"video\" xmlns=\"v1\" />",$html);
+			}
 		}
 	}
 

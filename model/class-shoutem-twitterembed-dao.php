@@ -1,6 +1,6 @@
 <?php
 /**
- * This class is designed to work with SMG gallery output (USA Today specific) wrapped in our own shortcode
+ * This class is designed to work with Twitter embed markup wrapped in our own shortcode
  */
 class ShoutemTwitterEmbedDao extends ShoutemDao {
 	
@@ -10,13 +10,13 @@ class ShoutemTwitterEmbedDao extends ShoutemDao {
 	
 	public function attach_to_shortcodes() {
 		remove_shortcode( 'shoutemtwitterembed');
-		add_shortcode( 'shoutemtwitterembed', array(&$this, 'shortcode_twitterembedd' ) );
+		add_shortcode( 'shoutemtwitterembed', array(&$this, 'shortcode_twitterembed' ) );
 	}
 
 	/**
-	 * shoutem twitter embed gallery shortcode
+	 * shoutem twitter embed shortcode
 	 */
-	function shortcode_twitterembedd($atts, $content) {
+	function shortcode_twitterembed($atts, $content) {
         extract(shortcode_atts(array(
             'se_visible' => 'true'
         ), $atts ));

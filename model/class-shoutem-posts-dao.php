@@ -203,6 +203,7 @@ class ShoutemPostsDao extends ShoutemDao {
 
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#SMG_PhotoGallery', 'shoutemsmgallery');
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.embed-twitter', 'shoutemtwitterembed');
+		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.brightcove-embed', 'shoutembrightcoveembed');
 		$body = do_shortcode($body);
 
 		$striped_attachments = array ();
@@ -342,7 +343,7 @@ function shoutem_shortcode_wrapper_filter($content, $css_id_or_class, $shortcode
 		$shortcode_fragment->appendChild(new DOMText('[/'.$shortcode.']'));
 		$node_to_wrap->parentNode->replaceChild($shortcode_fragment, $node_to_wrap);
 	}
-	
+
 	return substr($dom->saveHTML($dom->getElementsByTagName('body')->item(0)), 6, -7);
 }
 

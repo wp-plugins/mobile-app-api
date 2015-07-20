@@ -204,6 +204,7 @@ class ShoutemPostsDao extends ShoutemDao {
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#SMG_PhotoGallery', 'shoutemsmgallery');
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.embed-twitter', 'shoutemtwitterembed');
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.brightcove-embed', 'shoutembrightcoveembed');
+		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#simple-brightcove-', 'shoutembrightcovesimple');
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#wpcom-iframe-form-', 'shoutemwpcomwidgetembed');
 		$body = do_shortcode($body);
 

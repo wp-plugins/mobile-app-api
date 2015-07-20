@@ -77,6 +77,7 @@ class ShoutemTwitterEmbedDao extends ShoutemDao {
 		preg_match('/\s*(.*)\\((.*)\\)/i', $user_info_text, $user_info);
 
 		return '<twitterdiv class="twitter-embed">'.
+					'<twitterdiv class="twitter-icon"></twitterdiv>'.
   					'<twitterdiv class="name">'.trim($user_info[1]).'</twitterdiv>'.
   					'<twitterdiv class="handle">'.$user_info[2].'</twitterdiv>'.
   					'<twitterdiv class="tweet">'.$tweet_text.'</twitterdiv>'.

@@ -65,7 +65,7 @@ class ShoutemSMGDao extends ShoutemDao {
 			$img_caption = '';
 			foreach ($img_caption_list as $img_caption_line) {
 				$img_caption = $img_caption.' '.trim($img_caption_line->wholeText);
-			}			
+			}
 			$replacement_item = "<attachment id=\"$pid\" type=\"image\" xmlns=\"urn:xmlns:shoutem-com:cms:v1\" />";
 			if ($img_caption) {
 				$image['caption'] = $img_caption;

@@ -204,6 +204,7 @@ class ShoutemPostsDao extends ShoutemDao {
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#SMG_PhotoGallery', 'shoutemsmgallery');
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.embed-twitter', 'shoutemtwitterembed');
 		$body = apply_filters('shoutem_shortcode_wrapper', $body, '.brightcove-embed', 'shoutembrightcoveembed');
+		$body = apply_filters('shoutem_shortcode_wrapper', $body, '#wpcom-iframe-form-', 'shoutemwpcomwidgetembed');
 		$body = do_shortcode($body);
 
 		$striped_attachments = array ();
@@ -330,6 +331,10 @@ function shoutem_shortcode_wrapper_filter($content, $css_id_or_class, $shortcode
 		$node = $dom->getElementById($id);
 		if ($node) {
 			$nodes_to_wrap[] = $node;
+		}
+		else {
+			$xpath = new DOMXPath($dom);
+			$nodes_to_wrap = $xpath->query("//*[contains(@id,'".$id."')]");
 		}
 	} else if ($class) {
 		$xpath = new DOMXPath($dom);

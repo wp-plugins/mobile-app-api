@@ -80,7 +80,7 @@ function sanitize_html($html, &$attachments = null) {
 	$filtered_html = preg_replace($all_tags, "filter_attr('\\1','\\2','\\3','\\4')",$filtered_html);
 	$filtered_html = preg_replace($all_tags, "rename_tag_post('\\1','\\2','\\3','\\4')",$filtered_html);
 
-	$filtered_html = preg_replace("/xmlns=\"v1\"([^>]*?)\s*\\/>/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"$1></attachment>",$filtered_html);
+	$filtered_html = preg_replace("/<\s*([^>\s]+)([^>]*)xmlns=\"v1\"([^>]*?)\s*\/>/i", "<$1$2xmlns=\"urn:xmlns:shoutem-com:cms:v1\"$3></$1>", $filtered_html);
 	$filtered_html = preg_replace("/xmlns=\"v1\"/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"",$filtered_html);
 	return $filtered_html;
 }

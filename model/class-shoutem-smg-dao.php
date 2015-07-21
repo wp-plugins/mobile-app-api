@@ -40,13 +40,13 @@ class ShoutemSMGDao extends ShoutemDao {
 		// supress warnings caused by HTML5 tags
 		@$dom->loadHTML($content);
 
-		$gallery_node = $dom->getElementById('SMG_PhotoGallery');
+		$xpath = new DOMXPath($dom);
+		$gallery_node = $xpath->query("//*[@id='SMG_PhotoGallery']")->item(0);
 		if (!$gallery_node) {
 			return '';
 		}
 
 		$replacement_list = '';
-		$xpath = new DOMXPath($dom);
 		$img_wrappers = $xpath->query("//*[contains(concat(' ', @class, ' '),' _smg-image-wrap ')]", $gallery_node);
 		foreach ($img_wrappers as $index => $img_wrapper) {
 			$img_src = $img_wrapper->getAttribute('data-imgsrc');

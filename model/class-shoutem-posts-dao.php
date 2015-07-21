@@ -328,17 +328,16 @@ function shoutem_shortcode_wrapper_filter($content, $css_id_or_class, $shortcode
 	@$dom->loadHTML('<?xml encoding="UTF-8">'.$content);
 
 	$nodes_to_wrap = array();
+	$xpath = new DOMXPath($dom);
 	if ($id) {
-		$node = $dom->getElementById($id);
+		$node = $xpath->query("//*[@id='".$id."']")->item(0);
 		if ($node) {
 			$nodes_to_wrap[] = $node;
 		}
 		else {
-			$xpath = new DOMXPath($dom);
 			$nodes_to_wrap = $xpath->query("//*[contains(@id,'".$id."')]");
 		}
 	} else if ($class) {
-		$xpath = new DOMXPath($dom);
 		$nodes_to_wrap = $xpath->query("//*[contains(concat(' ', @class, ' '),' ".$class." ')]");
 	}
 

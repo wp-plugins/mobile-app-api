@@ -115,11 +115,13 @@ class ShoutemBrightcoveEmbedDao extends ShoutemDao {
 		$dom = new DOMDocument();
 		// supress warnings caused by HTML5 tags
 		@$dom->loadHTML($wp_com_widget);
-		$flash_obj_node = $dom->getElementById('flashObj');
+
+		$xpath = new DOMXPath($dom);
+		$flash_obj_node = $xpath->query("//*[@id='flashObj']")->item(0);
 		if (!$flash_obj_node) {
 			return $content;
 		}
-		$xpath = new DOMXPath($dom);
+		
 		$embed_node = $xpath->query("//embed", $flash_obj_node)->item(0);
 		if (!$embed_node) {
 			return $content;

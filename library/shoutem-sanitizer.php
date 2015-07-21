@@ -446,7 +446,9 @@ function filter_attr($opening, $name, $attr, $closing) {
  * @return filtered tag
  */
 function rename_tag_pre($opening, $name, $attr, $closing) {
-	if (strcmp($name,'figcaption') == 0) {
+	if (strcmp($name,'se-attachment') == 0) {
+		$name = 'seattachment';
+	} else if (strcmp($name,'figcaption') == 0) {
 		$name = 'p';
 	} else if (strcmp($name,'tr') == 0 && strcmp($opening,'/') == 0) {
 		//Limited support for tables: each table row starts from a new line
@@ -466,11 +468,10 @@ function rename_tag_pre($opening, $name, $attr, $closing) {
  * @return filtered tag
  */
 function rename_tag_post($opening, $name, $attr, $closing) {
-	if (strcmp($name,'twitterdiv') == 0) {
-		$name = 'div';
-	}
 	if (strcmp($name,'seattachment') == 0) {
 		$name = 'se-attachment';
+	} else if (strcmp($name,'twitterdiv') == 0) {
+		$name = 'div';
 	}
 
 	$tag = '<'.$opening.$name.$attr.$closing.'>';

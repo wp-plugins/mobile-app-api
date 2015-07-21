@@ -66,7 +66,7 @@ class ShoutemSMGDao extends ShoutemDao {
 			foreach ($img_caption_list as $img_caption_line) {
 				$img_caption = $img_caption.' '.trim($img_caption_line->wholeText);
 			}
-			$replacement_item = "<seattachment id=\"$pid\" type=\"image\" xmlns=\"urn:xmlns:shoutem-com:cms:v1\" />";
+			$replacement_item = "<se-attachment id=\"$pid\" type=\"image\" xmlns=\"urn:xmlns:shoutem-com:cms:v1\" />";
 			if ($img_caption) {
 				$image['caption'] = $img_caption;
 				// TODO
@@ -83,7 +83,7 @@ class ShoutemSMGDao extends ShoutemDao {
 
 			$images []= $image;
 		}
-		$replacement = '<seattachment type="gallery" xmlns="urn:xmlns:shoutem-com:cms:v1">'.$replacement_list.'</seattachment>';
+		$replacement = '<se-attachment type="gallery" xmlns="urn:xmlns:shoutem-com:cms:v1">'.$replacement_list.'</se-attachment>';
 		$replacement_fragment = $dom->createDocumentFragment();
 		$replacement_fragment->appendXML($replacement);
 		$gallery_node->parentNode->replaceChild($replacement_fragment, $gallery_node);

@@ -54,6 +54,7 @@ function sanitize_html($html, &$attachments = null) {
 	if (function_exists('wp_kses')) {
 		$allowed_html = array(
 				'attachment' => array('id'=>true,'type'=>true,'xmlns'=>true),
+				'seattachment' => array('id'=>true,'type'=>true,'xmlns'=>true),
 				'a' => array('href'=>true),
 				'blockquote' => array(),
 				'h1' => array(),
@@ -80,7 +81,7 @@ function sanitize_html($html, &$attachments = null) {
 	$filtered_html = preg_replace($all_tags, "rename_tag_post('\\1','\\2','\\3','\\4')",$filtered_html);
 
 	$filtered_html = preg_replace("/xmlns=\"v1\"([^>]*?)\s*\\/>/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"$1></attachment>",$filtered_html);
-	$filtered_html = preg_replace("/xmlns=\"v1\"/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\">",$filtered_html);
+	$filtered_html = preg_replace("/xmlns=\"v1\"/i","xmlns=\"urn:xmlns:shoutem-com:cms:v1\"",$filtered_html);
 	return $filtered_html;
 }
 
@@ -372,7 +373,7 @@ function filter_tag($opening, $name, $attr, $closing) {
 
 	if (strcmp($name,'attachment') == 0) {
 		$filtered_attr = $attr;
-	} else if (strcmp($name,'se-attachment') == 0) {
+	} else if (strcmp($name,'se-attachment') == 0 || strcmp($name,'seattachment') == 0) {
 		$filtered_attr = $attr;
 	} else if (strcmp($name,'img') == 0) {
 		$filtered_attr = get_sanitized_attr('src',$attr);
@@ -467,6 +468,9 @@ function rename_tag_pre($opening, $name, $attr, $closing) {
 function rename_tag_post($opening, $name, $attr, $closing) {
 	if (strcmp($name,'twitterdiv') == 0) {
 		$name = 'div';
+	}
+	if (strcmp($name,'seattachment') == 0) {
+		$name = 'se-attachment';
 	}
 
 	$tag = '<'.$opening.$name.$attr.$closing.'>';

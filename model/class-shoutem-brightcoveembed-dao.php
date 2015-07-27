@@ -129,7 +129,6 @@ class ShoutemBrightcoveEmbedDao extends ShoutemDao {
 
 		$src = $embed_node->getAttribute('src');
 		if (strpos($src, 'brightcove') === false) {
-			exit('4');
 			return $content;
 		}
 
@@ -147,7 +146,6 @@ class ShoutemBrightcoveEmbedDao extends ShoutemDao {
 	private function parse_object($brightcove_node, $xpath) {
 		$paramIsVid = $xpath->query("//param[@name='isVid']", $brightcove_node)->item(0);
 		if (!$paramIsVid || $paramIsVid->getAttribute('value') !== 'true') {
-			exit($paramIsVid->getAttribute('value'));
 			return '';
 		}
 

@@ -3,7 +3,7 @@
 Plugin Name: Mobile App API
 Plugin URI: http://wordpress.org/extend/plugins/mobile-app-api/
 Description: Exposes REST API for accessing blog posts and post comments, as well as adding and deleting comments.</a>.
-Version: 1.0.2
+Version: 1.0.3
 */
 
 /*

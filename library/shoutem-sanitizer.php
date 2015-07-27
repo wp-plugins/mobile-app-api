@@ -127,6 +127,15 @@ function html_decode_list(&$list) {
 	}
 }
 
+function json_request($url) {
+	$response = wp_remote_get($url);
+	if ($response['response']['code'] != 200) {
+		return false;
+	}
+	$json = new SEServices_JSON();
+    return $json->decode($response['body']);
+}
+
 /**
  * Use only trough sanitize_html! Stripe attachments out of html and marks the places where attachments are striped.
  * @param html in/out modifies it so it contains <se-attachment id="attachment-id"> where attachment was striped
@@ -176,6 +185,48 @@ function sanitize_youtube_video_src($src) {
 	return str_replace('/embed/','/v/',$src);
 }
 
+function get_brightcove_video_id($src) {
+	parse_str($src, $params);
+	$key = '@videoPlayer';
+	if (!array_key_exists($key, $params)) return false;
+	return $params[$key];
+}
+
+function brightcove_attachment($tag_attr) {
+	$src = $tag_attr['src'];
+	$tag_attr['src'] = "";
+	$shoutem_options = new ShoutemApiOptions($this);
+	$options = $shoutem_options->get_options();
+	$token = $options['brightcove_token'];
+	if (!$token) {
+		return false;
+	}
+	$video_id = get_brightcove_video_id($src);
+	if (!$video_id) {
+		return false;
+	}
+
+	$url = "http://api.brightcove.com/services/library".
+			"?command=find_video_by_id".
+			"&video_fields=name,length,FLVURL,thumbnailURL".
+			"&media_delivery=http".
+			"&video_id=".$video_id.
+			"&token=".$token;
+	$video_json = json_request($url);
+	if (!$video_json || !$video_json->FLVURL) {
+		return false;
+	}
+	
+	$tag_attr['src'] = $video_json->FLVURL;
+	$tag_attr['title'] = $video_json->name;
+	$tag_attr['duration'] = $video_json->length/1000;
+	$tag_attr['thumbnail_url'] = $video_json->thumbnailURL;
+	$tag_attr['height'] = '';
+	$tag_attr['width'] = '';
+
+	return $tag_attr;
+}
+
 function strip_videos(&$html) {
 	$videos = array();
 	if(preg_match_all('/<object.*?<(embed.*?)>/si',$html,$matches) > 0) {
@@ -198,9 +249,12 @@ function strip_videos(&$html) {
 
 			if (strpos($tag_attr['src'],'brightcove') !== false) {
 				$tag_attr['provider'] = 'brightcove';
-				$videos []= $tag_attr;
-				$id = $tag_attr['id'];
-				$html = str_replace($matches[0][$index],"<attachment id=\"$id\" type=\"video\" xmlns=\"v1\" />",$html);
+				$bc_attachment = brightcove_attachment($tag_attr);
+				if ($bc_attachment) {
+					$videos []= $bc_attachment;
+					$id = $bc_attachment['id'];
+					$html = str_replace($matches[0][$index],"<attachment id=\"$id\" type=\"video\" xmlns=\"v1\" />",$html);
+				}
 			}
 		}
 	}
@@ -253,15 +307,6 @@ function get_sound_cloud_playlist_id($src) {
 		return $id;
 	}
 	return false;
-}
-
-function json_request($url) {
-	$response = wp_remote_get($url);
-	if ($response['response']['code'] != 200) {
-		return false;
-	}
-	$json = new SEServices_JSON();
-    return $json->decode($response['body']);
 }
 
 function sound_cloud_attachment($tag_attr) {
